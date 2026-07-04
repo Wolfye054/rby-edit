@@ -1,24 +1,8 @@
-#include "rbyedit.h"
-#include "pokeinfo.h"
 #include <stdlib.h>
 #include <string.h>
-
-#define CHECKSUM_ADDR 0x3523
-#define CHECKSUM_START_ADDR 0x2598
-#define CHECKSUM_END_ADDR 0x3522
-
-#define PLAYER_NAME_ADDR 0x2598
-#define RIVAL_NAME_ADDR 0x25F6
-#define MONEY_ADDR 0x25F3
-#define BAG_ADDR 0x25C9
-#define BOX_ITEMS_ADDR 0x27E6
-#define POKE_PARTY_ADDR 0x2F2C
-#define POKE_BOXES_ADDR_1 0x4000
-#define POKE_BOXES_ADDR_2 0x6000
-#define CURRENT_BOX_ADDR 0x284C
-#define CURRENT_BOX_DATA_ADDR 0x30C0
-
-// TODO: finish character sets for the ascii conversion functions
+#include "rbyedit.h"
+#include "rbyinfo.h"
+#include "rbychar.c"
 
 static int intsqrt(int n)
 {
@@ -40,28 +24,6 @@ static int intsqrt(int n)
         }
     }
     return ans;
-}
-
-static uint8_t ascii_to_rby(uint8_t c)
-{
-	if((c >= 'A' && c <= 'Z') ||
-   	   (c >= 'a' && c <= 'z'))
-	{
-		return c + 63;
-	}
-
-	return c;
-}
-
-static uint8_t rby_to_ascii(uint8_t c)
-{
-	if((c >= 0x80 && c <= 0x99) ||
-   	   (c >= 0xA0 && c <= 0xB9))
-	{
-		return c - 63;
-	}
-
-	return c;
 }
 
 static uint16_t get_int16(uint8_t *save, int address)
@@ -167,9 +129,11 @@ static Pokemon get_pokemon(uint8_t *save, int address)
 	pokemon.speed_xp = get_int16(save, address + 0x17);
 	pokemon.special_xp = get_int16(save, address + 0x19);
 
-	// each iv is four bits in size, and hp iv is composed of the
-	// least significant bit of attack, defense, speed, and special ivs
-	// in that order.
+	
+	//  each iv is four bits in size, and hp iv is composed of the
+	//  least significant bit of attack, defense, speed, and special ivs
+	//  in that order.
+	 
 	uint16_t iv_values = get_int16(save, address + 0x1B);
 	
 	uint8_t attack_iv = (iv_values >> 12) & 0x0F;
@@ -242,18 +206,20 @@ static int get_money(uint8_t *save)
 static char *get_string(uint8_t *save, int address)
 {
 	int size;
-	for(size = 0; save[address + size] != 0x50; size++);
+	for(size = 0; save[address + size] != RBY_CHAR_TERMINATOR; size++);
 
-	char *name = malloc(size + 1);
+	char *rby_string = malloc(size + 1);
 
 	int i;
 	for(i = 0; i < size; i++)
 	{
-		name[i] = rby_to_ascii(save[address + i]);
+		rby_string[i] = save[address + i];
 	}
-	name[i] = '\0';
+	rby_string[i] = RBY_CHAR_TERMINATOR;
 
-	return name;
+	char *ascii_sring = rby_to_ascii(rby_string);
+	free(rby_string);
+	return ascii_sring;
 }
 
 static PokemonParty get_party(uint8_t *save)
@@ -261,24 +227,24 @@ static PokemonParty get_party(uint8_t *save)
 	PokemonParty party;
 	int address;
 
-	party.count = save[POKE_PARTY_ADDR];
+	party.count = save[PARTY_DATA_ADDR];
 	party.pokemon = malloc(6 * sizeof(Pokemon));
 
-	address = POKE_PARTY_ADDR + 0x08;
+	address = PARTY_DATA_ADDR + 0x08;
 	for(int i = 0; i < party.count; i++)
 	{
 		party.pokemon[i] = get_pokemon(save, address);
 		address += 44;
 	}
 	
-	address = POKE_PARTY_ADDR + 0x110;
+	address = PARTY_DATA_ADDR + 0x110;
 	for(int i = 0; i < party.count; i++)
 	{
 		party.pokemon[i].og_trainer_name = get_string(save, address);
 		address += 11;
 	}
 
-	address = POKE_PARTY_ADDR + 0x152;
+	address = PARTY_DATA_ADDR + 0x152;
 	for(int i = 0; i < party.count; i++)
 	{
 		party.pokemon[i].nickname = get_string(save, address);
@@ -294,11 +260,25 @@ static PokemonBox get_pokemon_box(uint8_t *save, int address)
 	box.count = save[address];
 	box.pokemon = malloc(20 * sizeof(Pokemon));
 
-	address += 0x16;
+	int addr = address + 0x16;
 	for(int i = 0; i < box.count; i++)
 	{
-		box.pokemon[i] = get_pokemon(save, address);
-		address += 0x21;
+		box.pokemon[i] = get_pokemon(save, addr);
+		addr += 0x21;
+	}
+
+	addr = address + 0x2AA;
+	for(int i = 0; i < box.count; i++)
+	{
+		box.pokemon[i].og_trainer_name = get_string(save, addr);
+		addr += 0xB;
+	}
+
+	addr = address + 0x386;
+	for(int i = 0; i < box.count; i++)
+	{
+		box.pokemon[i].nickname = get_string(save, addr);
+		addr += 0xB;
 	}
 
 	return box;
@@ -313,12 +293,12 @@ static PokemonBox *get_pokemon_boxes(uint8_t *save)
 	// has changed boxes before.
 	int active_box = save[CURRENT_BOX_ADDR] & 0x7F;
 
-	int address = POKE_BOXES_ADDR_1;
+	int address = BANK_2_ADDR;
 	for(int i = 0; i < 12; i++)
 	{
 		// the boxes are split up in different banks and we need to jump
 		// to the next one when we get to index 6
-		if(i == 6) address = POKE_BOXES_ADDR_2;
+		if(i == 6) address = BANK_3_ADDR;
 
 		if(i == active_box)
 		{
@@ -339,12 +319,12 @@ static void set_checksum(uint8_t *save)
 {
 	uint8_t checksum = 0;
 
-	for(int addr = CHECKSUM_START_ADDR; addr <= CHECKSUM_END_ADDR; addr++)
+	for(int addr = BOX_1_CHECKSUM_START_ADDR; addr <= BOX_1_CHECKSUM_END_ADDR; addr++)
 	{
 		checksum += save[addr];
 	}
 
-	save[CHECKSUM_ADDR] = ~checksum;
+	save[BOX_1_CHECKSUM_ADDR] = ~checksum;
 }
 
 static void set_money(uint8_t *save, uint32_t amount)
@@ -388,15 +368,18 @@ static void write_list(uint8_t *save, int address, List list)
 	save[address + (2 * list.count) + 1] = 0XFF;
 }
 
-static void write_string(uint8_t *save, int address, char *string)
+static void write_string(uint8_t *save, int address, char *ascii_string)
 {
+	char *rby_string = ascii_to_rby(ascii_string);
+
 	int i;
-	for(i = 0; string[i] != '\0'; i++)
+	for(i = 0; rby_string[i] != RBY_CHAR_TERMINATOR; i++)
 	{
-		save[address + i] = ascii_to_rby(string[i]);
+		save[address + i] = rby_string[i];
 	}
 
-	save[address + i] = 0x50;
+	save[address + i] = RBY_CHAR_TERMINATOR;
+	free(rby_string);
 }
 
 void update_save(uint8_t *save, SaveData save_data)
@@ -404,7 +387,7 @@ void update_save(uint8_t *save, SaveData save_data)
 	set_money(save, save_data.money);
 	write_string(save, PLAYER_NAME_ADDR, save_data.player_name);
 	write_string(save, RIVAL_NAME_ADDR, save_data.rival_name);
-	write_list(save, BAG_ADDR, save_data.bag);
+	write_list(save, BAG_ITEMS_ADDR, save_data.bag);
 	write_list(save, BOX_ITEMS_ADDR, save_data.box_items);
 	set_checksum(save);
 }
@@ -418,7 +401,7 @@ SaveData get_save_data(uint8_t *save)
 	save_data.rival_name = get_string(save, RIVAL_NAME_ADDR);
 	save_data.player_name = get_string(save, PLAYER_NAME_ADDR);
 	save_data.money = get_money(save);
-	save_data.bag = get_list(save, BAG_ADDR, 20);
+	save_data.bag = get_list(save, BAG_ITEMS_ADDR, 20);
 	save_data.box_items = get_list(save, BOX_ITEMS_ADDR, 50);
 	save_data.party = get_party(save);
 	save_data.pokemon_boxes = get_pokemon_boxes(save);
