@@ -1,4 +1,4 @@
-#include "pokeinfo.h"
+#include "rbyinfo.h"
 
 static Info items[256] =
 {

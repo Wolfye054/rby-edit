@@ -1,5 +1,8 @@
 #include <stdint.h>
 
+#define RBY_CHAR_TERMINATOR 0x50
+#define RBY_CHAR_UNKNOWN 0xE6
+
 typedef struct
 {
 	uint8_t id;
