@@ -42,6 +42,20 @@ static uint32_t get_int24(uint8_t *save, int address)
 	return value;
 }
 
+// TODO: make set_int functions safe
+static void set_int16(uint8_t *save, int address, uint16_t value)
+{
+	save[address] = (value >> 8) & 0xFF;
+	save[address + 1] = value & 0xFF;
+}
+
+static void set_int24(uint8_t *save, int address, uint32_t value)
+{
+	save[address] = (value >> 16) & 0xFF;
+	save[address + 1] = (value >> 8) & 0xFF;
+	save[address + 2] = value & 0xFF;
+}
+
 static int xp_required_for_level(int level, GrowthRate rate)
 {
 	uint32_t n = level;
@@ -140,6 +154,8 @@ static Pokemon get_pokemon(uint8_t *save, int address)
 	uint8_t defense_iv = (iv_values >> 8) & 0x0F;
 	uint8_t speed_iv = (iv_values >> 4) & 0x0F;
 	uint8_t special_iv = iv_values & 0x0F;
+
+	pokemon.iv = iv_values;
 
 	pokemon.hp_iv =
 		((attack_iv & 0x01) << 3)  |
@@ -297,7 +313,7 @@ static PokemonBox *get_pokemon_boxes(uint8_t *save)
 	for(int i = 0; i < 12; i++)
 	{
 		// the boxes are split up in different banks and we need to jump
-		// to the next one when we get to index 6
+		// to bank 3 when we get to index 6
 		if(i == 6) address = BANK_3_ADDR;
 
 		if(i == active_box)
@@ -327,6 +343,7 @@ static void set_checksum(uint8_t *save)
 	save[BOX_1_CHECKSUM_ADDR] = ~checksum;
 }
 
+// TODO: update to use set_int24
 static void set_money(uint8_t *save, uint32_t amount)
 {
 	if(amount > 999999) amount = 999999;
@@ -382,6 +399,140 @@ static void write_string(uint8_t *save, int address, char *ascii_string)
 	free(rby_string);
 }
 
+static void write_pokemon33(uint8_t *save, int address, Pokemon pokemon)
+{
+	save[address] = pokemon.id;
+	set_int16(save, address + 0x01, pokemon.current_hp);
+	save[address + 0x03] = pokemon.pc_level;
+	save[address + 0x04] = pokemon.status;
+	save[address + 0x05] = pokemon.type1;
+	save[address + 0x06] = pokemon.type2;
+	save[address + 0x07] = pokemon.catch_rate;
+	save[address + 0x08] = pokemon.move1_id;
+	save[address + 0x09] = pokemon.move2_id;
+	save[address + 0x0A] = pokemon.move3_id;
+	save[address + 0x0B] = pokemon.move4_id;
+	set_int16(save, address + 0x0C, pokemon.og_trainer_id);
+	set_int24(save, address + 0x0E, pokemon.xp);
+	set_int16(save, address + 0x11, pokemon.hp_xp);
+	set_int16(save, address + 0x13, pokemon.attack_xp);
+	set_int16(save, address + 0x15, pokemon.defense_xp);
+	set_int16(save, address + 0x17, pokemon.speed_xp);
+	set_int16(save, address + 0x19, pokemon.special_xp);
+
+	uint16_t iv_values = (pokemon.attack_iv << 12) | (pokemon.defense_iv << 8)
+			  | (pokemon.speed_iv << 4) | pokemon.special_iv;
+
+	set_int16(save, address + 0x1B, iv_values);
+	save[address + 0x1D] = pokemon.move1_pp;
+	save[address + 0x1E] = pokemon.move2_pp;
+	save[address + 0x1F] = pokemon.move3_pp;
+	save[address + 0x20] = pokemon.move4_pp;
+}
+
+static void write_pokemon44(uint8_t *save, int address, Pokemon pokemon)
+{
+	write_pokemon33(save, address, pokemon);
+	save[address + 0x21] = pokemon.level;
+	set_int16(save, address + 0x22, pokemon.hp);
+	set_int16(save, address + 0x24, pokemon.attack);
+	set_int16(save, address + 0x26, pokemon.defense);
+	set_int16(save, address + 0x28, pokemon.speed);
+	set_int16(save, address + 0x2A, pokemon.special);
+}
+
+static void set_party(uint8_t *save, PokemonParty party)
+{
+	int address = PARTY_DATA_ADDR;
+	save[address++] = party.count;
+
+	int i;
+	for(i = 0; i < party.count; i++, address++)
+	{
+		save[address] = party.pokemon[i].id;
+	}
+	save[address] = 0xFF;
+
+	address = PARTY_DATA_ADDR + 0x8;
+	for(i = 0; i < party.count; i++)
+	{
+		write_pokemon44(save, address, party.pokemon[i]);
+		address += 0x2C;
+	}
+	
+	address = PARTY_DATA_ADDR + 0x110;
+	for(i = 0; i < party.count; i++)
+	{
+		write_string(save, address, party.pokemon[i].og_trainer_name);
+		address += 0xB;
+	}
+
+	address = PARTY_DATA_ADDR + 0x152;
+	for(i = 0; i < party.count; i++)
+	{
+		write_string(save, address, party.pokemon[i].nickname);
+		address += 0xB;
+	}
+}
+
+static void write_box(uint8_t *save, int box_address, PokemonBox box)
+{
+	int address = box_address;
+	save[address++] = box.count;
+
+	int i;
+	for(i = 0; i < box.count; i++, address++)
+	{
+		save[address] = box.pokemon[i].id;
+	}
+	save[address] = 0xFF;
+
+	address = box_address + 0x16;
+	for(i = 0; i < box.count; i++)
+	{
+		write_pokemon33(save, address, box.pokemon[i]);
+		address += 0x21;
+	}
+
+	address = box_address + 0x2AA;
+	for(i = 0; i < box.count; i++)
+	{
+		write_string(save, address, box.pokemon[i].og_trainer_name);
+		address += 0xB;
+	}
+	
+	address = box_address + 0x386;
+	for(i = 0; i < box.count; i++)
+	{
+		write_string(save, address, box.pokemon[i].nickname);
+		address += 0xB;
+	}
+}
+
+static void set_boxes(uint8_t *save, PokemonBox *boxes)
+{
+	int active_box = save[CURRENT_BOX_ADDR] & 0x7F;
+
+	int address = BANK_2_ADDR;
+	for(int i = 0; i < 12; i++)
+	{
+		// the boxes are split up in different banks and we need to jump
+		// to bank 3 when we get to index 6
+		if(i == 6) address = BANK_3_ADDR;
+
+		if(i == active_box)
+		{
+			write_box(save, CURRENT_BOX_DATA_ADDR, boxes[i]);		
+		}
+		else
+		{
+			write_box(save, address, boxes[i]);
+		}
+
+		address += 0x462;
+	}
+}
+
 void update_save(uint8_t *save, SaveData save_data)
 {
 	set_money(save, save_data.money);
@@ -389,6 +540,8 @@ void update_save(uint8_t *save, SaveData save_data)
 	write_string(save, RIVAL_NAME_ADDR, save_data.rival_name);
 	write_list(save, BAG_ITEMS_ADDR, save_data.bag);
 	write_list(save, BOX_ITEMS_ADDR, save_data.box_items);
+	set_party(save, save_data.party);
+	set_boxes(save, save_data.pokemon_boxes);
 	set_checksum(save);
 }
 

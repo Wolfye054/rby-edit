@@ -23,6 +23,7 @@ typedef struct
 	uint16_t defense_xp;
 	uint16_t speed_xp;
 	uint16_t special_xp;
+	uint8_t iv;
 	uint8_t hp_iv;
 	uint8_t attack_iv;
 	uint8_t defense_iv;
