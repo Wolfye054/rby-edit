@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "rbyedit.h"
-#include "rbyinfo.h"
 #include "rbychar.c"
 
 static int intsqrt(int n)
@@ -56,13 +55,15 @@ static void set_int24(uint8_t *save, int address, uint32_t value)
 	save[address + 2] = value & 0xFF;
 }
 
-static int xp_required_for_level(int level, GrowthRate rate)
+int xp_required_for_level(int level, int id)
 {
+	PokemonBaseStats base = get_pokemon_base_stats(id);
+
 	uint32_t n = level;
 	uint32_t n3 = n * n * n;
 	uint32_t n2 = n * n;
 
-	switch(rate)
+	switch(base.growth_rate)
 	{
 		case FAST:
 			return (4 * n3) / 5;
@@ -109,7 +110,7 @@ static int calculate_stat(int base, int iv, int stat_xp, int level)
 static void set_derived_values(Pokemon *pokemon)
 {
 	PokemonBaseStats base = get_pokemon_base_stats(pokemon->id);
-	int level = get_level(pokemon->xp, base.growth_rate);
+	int level = get_level(pokemon->xp, pokemon->id);
 	pokemon->level = level;
 	
 	pokemon->hp = ((((base.hp + pokemon->hp_iv) * 2 + (intsqrt(pokemon->hp_xp) / 4)) * level) / 100)
@@ -432,6 +433,9 @@ static void write_pokemon33(uint8_t *save, int address, Pokemon pokemon)
 
 static void write_pokemon44(uint8_t *save, int address, Pokemon pokemon)
 {
+	// TODO maybe we should be setting derived values when editing pokemon
+	set_derived_values(&pokemon);
+
 	write_pokemon33(save, address, pokemon);
 	save[address + 0x21] = pokemon.level;
 	set_int16(save, address + 0x22, pokemon.hp);

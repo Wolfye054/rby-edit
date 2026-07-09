@@ -1,6 +1,38 @@
 #include <gtk/gtk.h>
 #include "rbyedit.h"
-#include "rbyinfo.h"
+
+typedef struct
+{
+	Pokemon *pokemon;
+
+	GtkWidget *name_entry;
+	GtkWidget *level_spin_button;
+	GtkWidget *og_trainer_id_entry;
+	GtkWidget *og_trainer_name_entry;
+	GtkWidget *species_dropdown;
+
+
+	GtkWidget *hp_iv_spin_button;
+	GtkWidget *hp_xp_spin_button;
+
+	GtkWidget *attack_iv_spin_button;
+	GtkWidget *attack_xp_spin_button;
+
+	GtkWidget *defense_iv_spin_button;
+	GtkWidget *defense_xp_spin_button;
+
+	GtkWidget *speed_iv_spin_button;
+	GtkWidget *speed_xp_spin_button;
+
+	GtkWidget *special_iv_spin_button;
+	GtkWidget *special_xp_spin_button;
+
+
+	GtkWidget *move1_dropdown;
+	GtkWidget *move2_dropdown;
+	GtkWidget *move3_dropdown;
+	GtkWidget *move4_dropdown;
+} PokemonEditDisplay;
 
 GFile *file;
 gsize length;
@@ -15,10 +47,23 @@ GtkWidget *party_tab_scrolled, *pokemon_box_tab_scrolled;
 
 static void update_item_tab(GtkWidget *tab_scrolled, List *item_list);
 
-static void add_promted_item(GtkButton *button, List *item_list)
+// there are gaps in the pokemon ids that need to be skipped over
+static int get_translated_id(int id)
 {
-	GtkWidget *promt_window = gtk_widget_get_ancestor(GTK_WIDGET(button), GTK_TYPE_WINDOW);
-	GtkWidget *vbox = gtk_window_get_child(GTK_WINDOW(promt_window));
+	int translated_id;
+	for(translated_id = 1;; translated_id++)
+	{
+		if(get_pokemon_info(translated_id).name && --id == 0)
+				break;
+	}
+
+	return translated_id;
+}
+
+static void add_prompted_item(GtkButton *button, List *item_list)
+{
+	GtkWidget *prompt_window = gtk_widget_get_ancestor(GTK_WIDGET(button), GTK_TYPE_WINDOW);
+	GtkWidget *vbox = gtk_window_get_child(GTK_WINDOW(prompt_window));
 	GtkWidget *dropdown = gtk_widget_get_first_child(vbox);
 	GtkWidget *tab_scrolled = g_object_get_data(G_OBJECT(button), "tab-scrolled");
 
@@ -38,12 +83,12 @@ static void add_promted_item(GtkButton *button, List *item_list)
 	item_list->entries[index].count = 1;
 	
 	update_item_tab(tab_scrolled, item_list);
-	gtk_window_destroy(GTK_WINDOW(promt_window));
+	gtk_window_destroy(GTK_WINDOW(prompt_window));
 }
 
-static void promt_new_item(GtkButton *button, List *item_list)
+static void prompt_new_item(GtkButton *button, List *item_list)
 {
-	GtkWidget *promt_window, *main_window;
+	GtkWidget *prompt_window, *main_window;
 	GtkWidget *dropdown, *submit_button;
 	GtkWidget *vbox;
 	GtkWidget *tab_scrolled;
@@ -60,25 +105,25 @@ static void promt_new_item(GtkButton *button, List *item_list)
 	}
 
 	main_window = gtk_widget_get_ancestor(GTK_WIDGET(button), GTK_TYPE_WINDOW);
-	promt_window = gtk_window_new();
-	gtk_window_set_title(GTK_WINDOW(promt_window), "Choose Item");
-	gtk_window_set_modal(GTK_WINDOW(promt_window), TRUE);
-	gtk_window_set_transient_for(GTK_WINDOW(promt_window), GTK_WINDOW(main_window));
+	prompt_window = gtk_window_new();
+	gtk_window_set_title(GTK_WINDOW(prompt_window), "Choose Item");
+	gtk_window_set_modal(GTK_WINDOW(prompt_window), TRUE);
+	gtk_window_set_transient_for(GTK_WINDOW(prompt_window), GTK_WINDOW(main_window));
 
  	dropdown = gtk_drop_down_new(G_LIST_MODEL(item_strings), NULL);
  	gtk_drop_down_set_enable_search(GTK_DROP_DOWN(dropdown), TRUE);
 
 	tab_scrolled = gtk_widget_get_ancestor(GTK_WIDGET(button), GTK_TYPE_SCROLLED_WINDOW);
 	submit_button = gtk_button_new_with_label("Submit");
-	g_signal_connect(submit_button, "clicked", G_CALLBACK(add_promted_item), item_list);
+	g_signal_connect(submit_button, "clicked", G_CALLBACK(add_prompted_item), item_list);
 	g_object_set_data(G_OBJECT(submit_button), "tab-scrolled", tab_scrolled);
 
 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
-	gtk_window_set_child(GTK_WINDOW(promt_window), vbox);
+	gtk_window_set_child(GTK_WINDOW(prompt_window), vbox);
 	gtk_box_append(GTK_BOX(vbox), dropdown);
 	gtk_box_append(GTK_BOX(vbox), submit_button);
 
-	gtk_window_present(GTK_WINDOW(promt_window));
+	gtk_window_present(GTK_WINDOW(prompt_window));
 }
 
 static void delete_item(GtkButton *button, List *item_list)
@@ -104,11 +149,6 @@ static void edit_item_count(GtkEditable *item_spin_button, List *item_list)
 	int count = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(item_spin_button));
 
 	item_list->entries[index].count = count;
-}
-
-static void edit_pokemon_level(GtkButton *button, Pokemon *pokemon)
-{
-	//TODO
 }
 
 static void create_stat_edit_hbox(GtkWidget *tab_vbox, char *name, int stat,
@@ -146,10 +186,45 @@ static void create_stat_edit_hbox(GtkWidget *tab_vbox, char *name, int stat,
 	gtk_box_append(GTK_BOX(tab_vbox), hbox);
 }
 
+static void update_pokemon(GtkWidget *widget, PokemonEditDisplay *pokemon_edits)
+{
+	// TODO: free memory
+
+	GtkWidget *edit_window = gtk_widget_get_ancestor(widget, GTK_TYPE_WINDOW);
+
+	Pokemon *pokemon = pokemon_edits->pokemon;
+
+	int id = gtk_drop_down_get_selected(GTK_DROP_DOWN(pokemon_edits->species_dropdown));
+	id++;
+	id = get_translated_id(id);
+	pokemon->id = id;
+
+	char *nickname = 
+		gtk_editable_get_text(GTK_EDITABLE(pokemon_edits->name_entry));
+	nickname = g_strdup(nickname);
+	pokemon->nickname = nickname;
+
+	char *og_trainer_name =
+		gtk_editable_get_text(GTK_EDITABLE(pokemon_edits->og_trainer_name_entry));
+	og_trainer_name = g_strdup(og_trainer_name);
+	pokemon->og_trainer_name = og_trainer_name;
+
+	pokemon->og_trainer_id = 
+		atoi(gtk_editable_get_text(GTK_EDITABLE(pokemon_edits->og_trainer_id_entry)));
+
+
+	int level = gtk_spin_button_get_value(GTK_SPIN_BUTTON(pokemon_edits->level_spin_button));
+	pokemon->level = level;
+	pokemon->xp = xp_required_for_level(level, pokemon->id);
+	
+	gtk_window_destroy(GTK_WINDOW(edit_window));
+	//TODO pokemon stats and moves
+}
+
 static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 {
 	GtkWidget *edit_window, *main_window;
-	GtkWidget *hbox, *edits_vbox;
+	GtkWidget *hbox, *exit_hbox, *edits_vbox;
 	GtkWidget *pokemon_image;
 	GtkWidget *name_entry;
 	GtkWidget *level_spin_button;
@@ -157,7 +232,7 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 	GtkWidget *og_trainer_id_entry, *og_trainer_name_entry;
 	GtkWidget *notebook;
 	GtkWidget *species_dropdown;
-	//GtkWidget *apply_button, *close_button;
+	GtkWidget *save_button, *cancel_button;
 
 	Info pokemon_info = get_pokemon_info(pokemon->id);
 	main_window = gtk_widget_get_ancestor(GTK_WIDGET(button), GTK_TYPE_WINDOW);
@@ -209,8 +284,6 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 
 	level_spin_button = gtk_spin_button_new_with_range(1, 100, 1);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(level_spin_button), pokemon->level);
-	g_signal_connect(level_spin_button, "value-changed",
-			G_CALLBACK(edit_pokemon_level), pokemon);
 	label = gtk_label_new("Level");
 	gtk_box_append(GTK_BOX(edits_vbox), label);
 	gtk_box_append(GTK_BOX(edits_vbox), level_spin_button);
@@ -292,7 +365,27 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 	move_dropdown = gtk_drop_down_new(G_LIST_MODEL(move_strings), NULL);
 	gtk_drop_down_set_selected(GTK_DROP_DOWN(move_dropdown), pokemon->move4_id);
  	gtk_drop_down_set_enable_search(GTK_DROP_DOWN(move_dropdown), TRUE);
-	gtk_box_append(GTK_BOX(moves_tab_vbox), move_dropdown);
+
+	exit_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);	
+	gtk_box_append(GTK_BOX(edits_vbox), exit_hbox);
+
+	PokemonEditDisplay *pokemon_edit = malloc(sizeof(PokemonEditDisplay));
+	pokemon_edit->pokemon = pokemon;
+	pokemon_edit->name_entry = name_entry;
+	pokemon_edit->level_spin_button = level_spin_button;
+	pokemon_edit->og_trainer_id_entry = og_trainer_id_entry;
+	pokemon_edit->og_trainer_name_entry = og_trainer_name_entry;
+	pokemon_edit->species_dropdown = species_dropdown;
+
+	save_button = gtk_button_new_with_label("Apply Changes");
+	g_signal_connect(save_button, "clicked", G_CALLBACK(update_pokemon), pokemon_edit);
+	gtk_box_append(GTK_BOX(exit_hbox), save_button);
+
+	cancel_button = gtk_button_new_with_label("Cancel");
+	gtk_box_append(GTK_BOX(exit_hbox), cancel_button);
+	g_signal_connect_swapped(cancel_button, "clicked", G_CALLBACK(gtk_window_destroy),
+			edit_window);
+gtk_box_append(GTK_BOX(moves_tab_vbox), move_dropdown);
 
 	gtk_window_present(GTK_WINDOW(edit_window));
 }
@@ -378,7 +471,7 @@ static void update_item_tab(GtkWidget *tab_scrolled, List *item_list)
 	{
 		GtkWidget *new_item_button;
 		new_item_button = gtk_button_new_from_icon_name("list-add-symbolic");
-		g_signal_connect(new_item_button, "clicked", G_CALLBACK(promt_new_item), item_list);
+		g_signal_connect(new_item_button, "clicked", G_CALLBACK(prompt_new_item), item_list);
 		gtk_box_append(GTK_BOX(tab_vbox), new_item_button);
 	}
 }

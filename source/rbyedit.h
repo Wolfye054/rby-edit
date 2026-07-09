@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "rbyinfo.h"
 
 #define RBY_CHAR_TERMINATOR 0x50
 #define RBY_CHAR_UNKNOWN 0xE6
@@ -82,3 +83,4 @@ typedef struct
 
 SaveData get_save_data(uint8_t *save);
 void update_save(uint8_t *save, SaveData save_data);
+int xp_required_for_level(int level, int id);
