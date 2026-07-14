@@ -84,3 +84,4 @@ typedef struct
 SaveData get_save_data(uint8_t *save);
 void update_save(uint8_t *save, SaveData save_data);
 int xp_required_for_level(int level, int id);
+void set_derived_values(Pokemon *pokemon);

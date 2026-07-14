@@ -107,7 +107,7 @@ static int calculate_stat(int base, int iv, int stat_xp, int level)
 	return ((((base + iv) * 2 + (intsqrt(stat_xp) / 4)) * level) / 100) + 5;
 }
 
-static void set_derived_values(Pokemon *pokemon)
+void set_derived_values(Pokemon *pokemon)
 {
 	PokemonBaseStats base = get_pokemon_base_stats(pokemon->id);
 	int level = get_level(pokemon->xp, pokemon->id);

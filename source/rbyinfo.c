@@ -129,7 +129,7 @@ static Info items[256] =
 	[250] = {.name="TM50", .filename="normal.png"},
 };
 
-Info pokemon[191] = 
+Info pokemon[] = 
 {
 	[1] = {.name="Rhydon", .filename="rhydon.png"},
 	[2] = {.name="Kangaskhan", .filename="kangaskhan.png"},
@@ -626,4 +626,17 @@ PokemonBaseStats get_pokemon_base_stats(int id)
 char *get_move_name(int id)
 {
 	return moves[id];
+}
+
+// there are gaps in the pokemon ids that need to be skipped over
+int get_translated_id(int id)
+{
+	int translated_id;
+	for(translated_id = 1;; translated_id++)
+	{
+		if(get_pokemon_info(translated_id).name && --id == 0)
+				break;
+	}
+
+	return translated_id;
 }

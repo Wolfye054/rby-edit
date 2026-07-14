@@ -29,6 +29,9 @@
 
 #define BANK_3_ADDR 0x6000
 
+
+#define POKEMON_MAX_ID 190
+
 typedef enum 
 {
 	SLOW,
@@ -57,3 +60,4 @@ Info get_item_info(int id);
 Info get_pokemon_info(int id);
 PokemonBaseStats get_pokemon_base_stats(int id);
 char *get_move_name(int id);
+int get_translated_id(int id);
