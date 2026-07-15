@@ -25,6 +25,19 @@ typedef struct
 	GtkWidget *og_trainer_id_entry;
 	GtkWidget *og_trainer_name_entry;
 	GtkWidget *species_dropdown;
+	GtkWidget *hp_stat_xp;
+	GtkWidget *attack_stat_iv;
+	GtkWidget *attack_stat_xp;
+	GtkWidget *defense_stat_iv;
+	GtkWidget *defense_stat_xp;
+	GtkWidget *speed_stat_iv;
+	GtkWidget *speed_stat_xp;
+	GtkWidget *special_stat_iv;
+	GtkWidget *special_stat_xp;
+	GtkWidget *move1_dropdown;
+	GtkWidget *move2_dropdown;
+	GtkWidget *move3_dropdown;
+	GtkWidget *move4_dropdown;
 } UpdatePokemonParams;
 
 static void update_item_tab(GtkWidget *tab_scrolled, List *item_list);

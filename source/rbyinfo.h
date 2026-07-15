@@ -60,4 +60,5 @@ Info get_item_info(int id);
 Info get_pokemon_info(int id);
 PokemonBaseStats get_pokemon_base_stats(int id);
 char *get_move_name(int id);
-int get_translated_id(int id);
+int get_pokemon_translated_id(int id);
+int get_move_translated_id(int id);

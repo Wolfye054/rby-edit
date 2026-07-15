@@ -94,8 +94,8 @@ static void edit_item_count(GtkEditable *item_spin_button, List *item_list)
 	item_list->entries[index].count = count;
 }
 
-static void create_stat_edit_hbox(GtkWidget *tab_vbox, char *name, int stat,
-		int stat_iv, int stat_xp)
+static GtkWidget *create_stat_edit_hbox(GtkWidget *tab_vbox, char *name, int stat,
+		int stat_iv, int stat_xp, GtkWidget **stat_iv_spin, GtkWidget **stat_xp_spin)
 {
 	GtkWidget *hbox;
 	GtkWidget *stat_spin_button;
@@ -126,7 +126,15 @@ static void create_stat_edit_hbox(GtkWidget *tab_vbox, char *name, int stat,
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(stat_xp_spin_button), stat_xp);
 	gtk_box_append(GTK_BOX(hbox), stat_xp_spin_button);
 
+	if(stat_iv_spin)
+		*stat_iv_spin = stat_iv_spin_button;
+
+	if(stat_xp_spin)
+		*stat_xp_spin = stat_xp_spin_button;
+
 	gtk_box_append(GTK_BOX(tab_vbox), hbox);
+
+	return hbox;
 }
 
 static void update_pokemon(GtkWidget *widget, UpdatePokemonParams *params)
@@ -136,7 +144,7 @@ static void update_pokemon(GtkWidget *widget, UpdatePokemonParams *params)
 
 	int id = gtk_drop_down_get_selected(GTK_DROP_DOWN(params->species_dropdown));
 	id++;
-	id = get_translated_id(id);
+	id = get_pokemon_translated_id(id);
 	pokemon->id = id;
 
 	char *nickname = 
@@ -155,7 +163,40 @@ static void update_pokemon(GtkWidget *widget, UpdatePokemonParams *params)
 	int level = gtk_spin_button_get_value(GTK_SPIN_BUTTON(params->level_spin_button));
 	pokemon->level = level;
 	pokemon->xp = xp_required_for_level(level, pokemon->id);
-	
+
+	pokemon->hp_xp = gtk_spin_button_get_value(GTK_SPIN_BUTTON(params->hp_stat_xp));
+
+	pokemon->attack_iv = gtk_spin_button_get_value(GTK_SPIN_BUTTON(params->attack_stat_iv));
+	pokemon->attack_xp = gtk_spin_button_get_value(GTK_SPIN_BUTTON(params->attack_stat_xp));
+
+	pokemon->defense_iv = gtk_spin_button_get_value(
+			GTK_SPIN_BUTTON(params->defense_stat_iv));
+	pokemon->attack_xp = gtk_spin_button_get_value(
+			GTK_SPIN_BUTTON(params->attack_stat_xp));
+
+	pokemon->speed_iv = gtk_spin_button_get_value(GTK_SPIN_BUTTON(params->speed_stat_iv));
+	pokemon->speed_xp = gtk_spin_button_get_value(GTK_SPIN_BUTTON(params->speed_stat_xp));
+
+	pokemon->special_iv = gtk_spin_button_get_value(GTK_SPIN_BUTTON(params->special_stat_iv));
+	pokemon->special_xp = gtk_spin_button_get_value(GTK_SPIN_BUTTON(params->special_stat_xp));
+
+	int move1_id = gtk_drop_down_get_selected(GTK_DROP_DOWN(params->move1_dropdown));
+	move1_id = get_move_translated_id(move1_id);
+
+	int move2_id = gtk_drop_down_get_selected(GTK_DROP_DOWN(params->move2_dropdown));
+	move2_id = get_move_translated_id(move2_id);
+
+	int move3_id = gtk_drop_down_get_selected(GTK_DROP_DOWN(params->move3_dropdown));
+	move3_id = get_move_translated_id(move3_id);
+
+	int move4_id = gtk_drop_down_get_selected(GTK_DROP_DOWN(params->move4_dropdown));
+	move4_id = get_move_translated_id(move4_id);
+
+	pokemon->move1_id = move1_id;
+	pokemon->move2_id = move2_id;
+	pokemon->move3_id = move3_id;
+	pokemon->move4_id = move4_id;
+	// TODO more values need to be updated like type, catchrate
 	set_derived_values(pokemon);
 	
 	update_party_tab();
@@ -178,6 +219,7 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 	GtkWidget *notebook;
 	GtkWidget *species_dropdown;
 	GtkWidget *save_button, *cancel_button;
+	UpdatePokemonParams *update_pokemon_params = malloc(sizeof(UpdatePokemonParams));
 
 	Info pokemon_info = get_pokemon_info(pokemon->id);
 	main_window = gtk_widget_get_ancestor(GTK_WIDGET(button), GTK_TYPE_WINDOW);
@@ -263,15 +305,23 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 	gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(stats_tab_scrolled), stat_tab_vbox);
 
 	create_stat_edit_hbox(stat_tab_vbox, "HP", pokemon->hp,
-			pokemon->hp_iv, pokemon->hp_xp);
-	create_stat_edit_hbox(stat_tab_vbox, "Attack", pokemon->attack,
-			pokemon->attack_iv, pokemon->attack_xp);
-	create_stat_edit_hbox(stat_tab_vbox, "Defense", pokemon->defense,
-			pokemon->defense_iv, pokemon->defense_xp);
-	create_stat_edit_hbox(stat_tab_vbox, "Speed", pokemon->speed,
-			pokemon->speed_iv, pokemon->speed_xp);
-	create_stat_edit_hbox(stat_tab_vbox, "Special", pokemon->special,
-			pokemon->special_iv, pokemon->special_xp);
+			pokemon->hp_iv, pokemon->hp_xp, NULL, &update_pokemon_params->hp_stat_xp);
+
+	create_stat_edit_hbox(stat_tab_vbox, "Attack", pokemon->attack, pokemon->attack_iv,
+			pokemon->attack_xp, &update_pokemon_params->attack_stat_iv,
+			&update_pokemon_params->attack_stat_xp);
+
+	create_stat_edit_hbox(stat_tab_vbox, "Defense",
+			pokemon->defense, pokemon->defense_iv, pokemon->defense_xp,
+			&update_pokemon_params->defense_stat_iv, &update_pokemon_params->defense_stat_xp);
+
+	create_stat_edit_hbox(stat_tab_vbox, "Speed",
+			pokemon->speed, pokemon->speed_iv, pokemon->speed_xp,
+			&update_pokemon_params->speed_stat_iv, &update_pokemon_params->speed_stat_xp);
+
+	create_stat_edit_hbox(stat_tab_vbox, "Special",
+			pokemon->special, pokemon->special_iv, pokemon->special_xp,
+			&update_pokemon_params->special_stat_iv, &update_pokemon_params->special_stat_xp);
 
 	GtkWidget *moves_tab_label = gtk_label_new("Moves");
 	GtkWidget *moves_tab_scrolled = gtk_scrolled_window_new();
@@ -293,28 +343,31 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 	gtk_drop_down_set_selected(GTK_DROP_DOWN(move_dropdown), pokemon->move1_id);
  	gtk_drop_down_set_enable_search(GTK_DROP_DOWN(move_dropdown), TRUE);
 	gtk_box_append(GTK_BOX(moves_tab_vbox), move_dropdown);
+	update_pokemon_params->move1_dropdown = move_dropdown;
 
 	g_object_ref(move_strings);
 	move_dropdown = gtk_drop_down_new(G_LIST_MODEL(move_strings), NULL);
 	gtk_drop_down_set_selected(GTK_DROP_DOWN(move_dropdown), pokemon->move2_id);
  	gtk_drop_down_set_enable_search(GTK_DROP_DOWN(move_dropdown), TRUE);
 	gtk_box_append(GTK_BOX(moves_tab_vbox), move_dropdown);
+	update_pokemon_params->move2_dropdown = move_dropdown;
 
 	g_object_ref(move_strings);
 	move_dropdown = gtk_drop_down_new(G_LIST_MODEL(move_strings), NULL);
 		gtk_drop_down_set_selected(GTK_DROP_DOWN(move_dropdown), pokemon->move3_id);
  	gtk_drop_down_set_enable_search(GTK_DROP_DOWN(move_dropdown), TRUE);
 	gtk_box_append(GTK_BOX(moves_tab_vbox), move_dropdown);
+	update_pokemon_params->move3_dropdown = move_dropdown;
 
 	g_object_ref(move_strings);
 	move_dropdown = gtk_drop_down_new(G_LIST_MODEL(move_strings), NULL);
 	gtk_drop_down_set_selected(GTK_DROP_DOWN(move_dropdown), pokemon->move4_id);
  	gtk_drop_down_set_enable_search(GTK_DROP_DOWN(move_dropdown), TRUE);
+	update_pokemon_params->move4_dropdown = move_dropdown;
 
 	exit_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);	
 	gtk_box_append(GTK_BOX(edits_vbox), exit_hbox);
 
-	UpdatePokemonParams *update_pokemon_params = malloc(sizeof(UpdatePokemonParams));
 	update_pokemon_params->pokemon = pokemon;
 	update_pokemon_params->name_entry = name_entry;
 	update_pokemon_params->level_spin_button = level_spin_button;

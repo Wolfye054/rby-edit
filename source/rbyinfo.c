@@ -439,6 +439,7 @@ static PokemonBaseStats pokemon_stats[] =
 	[190] = {.hp=80, .attack=105, .defense=65, .speed=70, .special=100, .growth_rate=MEDIUM_SLOW}, // Victreebel
 };
 
+// TODO multi word names are broken
 static char *moves[] =
 {
 	[1] = "Pound",
@@ -629,13 +630,28 @@ char *get_move_name(int id)
 }
 
 // there are gaps in the pokemon ids that need to be skipped over
-int get_translated_id(int id)
+int get_pokemon_translated_id(int id)
 {
 	int translated_id;
 	for(translated_id = 1;; translated_id++)
 	{
 		if(get_pokemon_info(translated_id).name && --id == 0)
 				break;
+	}
+
+	return translated_id;
+}
+
+int get_move_translated_id(int id)
+{
+	if(id == 0)
+		return id;
+
+	int translated_id;
+	for(translated_id = 1;; translated_id++)
+	{
+		if(get_move_name(translated_id) && --id == 0)
+			break;
 	}
 
 	return translated_id;

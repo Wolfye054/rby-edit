@@ -120,6 +120,13 @@ void set_derived_values(Pokemon *pokemon)
 	pokemon->defense = calculate_stat(base.defense, pokemon->defense_iv, pokemon->defense_xp, level);
 	pokemon->speed = calculate_stat(base.speed, pokemon->speed_iv, pokemon->speed_xp, level);
 	pokemon->special = calculate_stat(base.special, pokemon->special_iv, pokemon->special_xp, level);
+
+	pokemon->hp_iv =
+	((pokemon->attack_iv & 0x01) << 3)  |
+	((pokemon->defense_iv & 0x01) << 2) |
+	((pokemon->speed_iv & 0x01) << 1)   |
+	(pokemon->special_iv & 0x01);
+
 }
 
 static Pokemon get_pokemon(uint8_t *save, int address)
