@@ -29,6 +29,9 @@
 
 #define BANK_3_ADDR 0x6000
 
+
+#define POKEMON_MAX_ID 190
+
 typedef enum 
 {
 	SLOW,
@@ -50,6 +53,9 @@ typedef struct
 	uint8_t defense;
 	uint8_t speed;
 	uint8_t special;
+	uint8_t type1;
+	uint8_t type2;
+	uint8_t catch_rate;
 	GrowthRate growth_rate;
 } PokemonBaseStats;
 
@@ -57,3 +63,5 @@ Info get_item_info(int id);
 Info get_pokemon_info(int id);
 PokemonBaseStats get_pokemon_base_stats(int id);
 char *get_move_name(int id);
+int get_pokemon_translated_id(int id);
+int get_move_translated_id(int id);
