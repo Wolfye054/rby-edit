@@ -53,6 +53,9 @@ typedef struct
 	uint8_t defense;
 	uint8_t speed;
 	uint8_t special;
+	uint8_t type1;
+	uint8_t type2;
+	uint8_t catch_rate;
 	GrowthRate growth_rate;
 } PokemonBaseStats;
 

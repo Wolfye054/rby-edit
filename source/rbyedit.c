@@ -90,7 +90,6 @@ int xp_required_for_level(int level, int id)
 // There is a bug in the game where the medium slow formula can result in a negative number,
 // which overflows the 24 bit value into being very larg.
 // this function does not emulate that
-// TODO: should this function emulate the underflow bug?
 static uint8_t get_level(int xp, GrowthRate rate)
 {
 	for(int i = 1; i < 100; i++)
@@ -107,7 +106,7 @@ static int calculate_stat(int base, int iv, int stat_xp, int level)
 	return ((((base + iv) * 2 + (intsqrt(stat_xp) / 4)) * level) / 100) + 5;
 }
 
-void set_derived_values(Pokemon *pokemon)
+static void set_derived_values(Pokemon *pokemon)
 {
 	PokemonBaseStats base = get_pokemon_base_stats(pokemon->id);
 	int level = get_level(pokemon->xp, pokemon->id);
@@ -126,7 +125,15 @@ void set_derived_values(Pokemon *pokemon)
 	((pokemon->defense_iv & 0x01) << 2) |
 	((pokemon->speed_iv & 0x01) << 1)   |
 	(pokemon->special_iv & 0x01);
+}
 
+void apply_changes_to_pokemon(Pokemon *pokemon)
+{
+	set_derived_values(pokemon);
+	PokemonBaseStats base = get_pokemon_base_stats(pokemon->id);
+	pokemon->type1 = base.type1;
+	pokemon->type2 = base.type2;
+	pokemon->catch_rate = base.catch_rate;
 }
 
 static Pokemon get_pokemon(uint8_t *save, int address)
@@ -308,7 +315,6 @@ static PokemonBox get_pokemon_box(uint8_t *save, int address)
 	return box;
 }
 
-//TODO: function seems to segfault if player has never opened a box before
 static PokemonBox *get_pokemon_boxes(uint8_t *save)
 {
 	PokemonBox *boxes = malloc(12 * sizeof(PokemonBox));
@@ -351,7 +357,6 @@ static void set_checksum(uint8_t *save)
 	save[BOX_1_CHECKSUM_ADDR] = ~checksum;
 }
 
-// TODO: update to use set_int24
 static void set_money(uint8_t *save, uint32_t amount)
 {
 	if(amount > 999999) amount = 999999;
@@ -365,9 +370,7 @@ static void set_money(uint8_t *save, uint32_t amount)
 		shift += 4;
 	}
 
-	save[MONEY_ADDR] = bcd >> 16;
-	save[MONEY_ADDR + 1] = bcd >> 8;
-	save[MONEY_ADDR + 2] = bcd;
+	set_int24(save, MONEY_ADDR, bcd);
 }
 
 static void write_list(uint8_t *save, int address, List list)
@@ -440,7 +443,6 @@ static void write_pokemon33(uint8_t *save, int address, Pokemon pokemon)
 
 static void write_pokemon44(uint8_t *save, int address, Pokemon pokemon)
 {
-	// TODO maybe we should be setting derived values when editing pokemon
 	set_derived_values(&pokemon);
 
 	write_pokemon33(save, address, pokemon);

@@ -196,14 +196,12 @@ static void update_pokemon(GtkWidget *widget, UpdatePokemonParams *params)
 	pokemon->move2_id = move2_id;
 	pokemon->move3_id = move3_id;
 	pokemon->move4_id = move4_id;
-	// TODO more values need to be updated like type, catchrate
-	set_derived_values(pokemon);
+	apply_changes_to_pokemon(pokemon);
 	
 	update_party_tab();
 	update_pokemon_box_tab();
 
 	gtk_window_destroy(GTK_WINDOW(edit_window));
-	//TODO pokemon stats and moves
 }
 
 static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
@@ -535,7 +533,6 @@ static void save_file()
 {
 	if(!save.save_mem) return;
 
-	// TODO: make sure player name is not longer than the game allows
 	save.save_data.player_name = gtk_editable_get_text(
 			GTK_EDITABLE(global_widgets.player_name_entry));
 	save.save_data.rival_name = gtk_editable_get_text(
@@ -651,8 +648,20 @@ static void app_activate(GApplication *app)
 	gtk_box_append(GTK_BOX(hbox), save_edits_vbox);
 
 	global_widgets.player_name_entry = create_save_edit_entry(save_edits_vbox, "Player Name");
+	gtk_entry_set_max_length(GTK_ENTRY(global_widgets.player_name_entry), 10);
+
 	global_widgets.rival_name_entry = create_save_edit_entry(save_edits_vbox, "Rival Name");
-	global_widgets.money_entry = create_save_edit_entry(save_edits_vbox, "Money");
+	gtk_entry_set_max_length(GTK_ENTRY(global_widgets.rival_name_entry), 10);
+
+	// money edit needs to be spin button
+	GtkWidget *money_vbox, *money_label;
+	
+	money_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+	money_label = gtk_label_new("Money");
+	global_widgets.money_entry  = gtk_spin_button_new_with_range(1, 999999, 10);
+	gtk_box_append(GTK_BOX(money_vbox), money_label);
+	gtk_box_append(GTK_BOX(money_vbox), global_widgets.money_entry);
+	gtk_box_append(GTK_BOX(save_edits_vbox), money_vbox);
 
 	notebook = gtk_notebook_new();
 	gtk_widget_set_hexpand(notebook, TRUE);
