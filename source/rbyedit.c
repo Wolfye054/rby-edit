@@ -291,6 +291,10 @@ static PokemonBox get_pokemon_box(uint8_t *save, int address)
 	box.count = save[address];
 	box.pokemon = malloc(20 * sizeof(Pokemon));
 
+	// When a player opens a save file that they have not opened the boxes at all it sometimes will have junk values.
+	if(box.count > 20)
+		box.count = 0;
+
 	int addr = address + 0x16;
 	for(int i = 0; i < box.count; i++)
 	{

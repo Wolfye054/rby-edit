@@ -72,6 +72,7 @@ static void prompt_new_item(GtkButton *button, List *item_list)
 static void delete_item(GtkButton *button, List *item_list)
 {
 	GtkWidget *item_entry = gtk_widget_get_parent(GTK_WIDGET(button));
+	item_entry = gtk_widget_get_parent(item_entry);
 	GtkWidget *item_spin_button = g_object_get_data(G_OBJECT(item_entry), "spin-button");
 
 	GtkWidget *tab_scrolled = gtk_widget_get_ancestor(item_entry, GTK_TYPE_SCROLLED_WINDOW);
@@ -94,45 +95,52 @@ static void edit_item_count(GtkEditable *item_spin_button, List *item_list)
 	item_list->entries[index].count = count;
 }
 
-static GtkWidget *create_stat_edit_hbox(GtkWidget *tab_vbox, char *name, int stat,
+static GtkWidget *create_stat_edit_box(GtkWidget *tab_vbox, char *name, int stat,
 		int stat_iv, int stat_xp, GtkWidget **stat_iv_spin, GtkWidget **stat_xp_spin)
 {
-	GtkWidget *hbox;
-	GtkWidget *stat_spin_button;
+	GtkWidget *center_box;
+	GtkWidget *vbox, *hbox;
 	GtkWidget *stat_iv_spin_button;
 	GtkWidget *stat_xp_spin_button;
 	GtkWidget *label;
 	char buffer[16];
 
-	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	center_box = gtk_center_box_new();
+
+	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+
+	snprintf(buffer, sizeof(buffer), "%s: %d", name, stat);
+	label = gtk_label_new(buffer);
+	gtk_box_append(GTK_BOX(vbox), label);
+
 	
-	label = gtk_label_new(name);
-	gtk_box_append(GTK_BOX(hbox), label);
-	stat_spin_button = gtk_spin_button_new_with_range(1, 1000, 1);
-	gtk_spin_button_set_value(GTK_SPIN_BUTTON(stat_spin_button), stat);
-	gtk_box_append(GTK_BOX(hbox), stat_spin_button);
-
-	snprintf(buffer, sizeof(buffer), "%s IV", name);
-	label = gtk_label_new(buffer);
-	gtk_box_append(GTK_BOX(hbox), label);
-	stat_iv_spin_button = gtk_spin_button_new_with_range(0, 15, 1);
-	gtk_spin_button_set_value(GTK_SPIN_BUTTON(stat_iv_spin_button), stat_iv);
-	gtk_box_append(GTK_BOX(hbox), stat_iv_spin_button);
-
-	snprintf(buffer, sizeof(buffer), "%s XP", name);
-	label = gtk_label_new(buffer);
-	gtk_box_append(GTK_BOX(hbox), label);
-	stat_xp_spin_button = gtk_spin_button_new_with_range(0, 65535, 1);
-	gtk_spin_button_set_value(GTK_SPIN_BUTTON(stat_xp_spin_button), stat_xp);
-	gtk_box_append(GTK_BOX(hbox), stat_xp_spin_button);
-
+	
 	if(stat_iv_spin)
+	{
+		label = gtk_label_new("IV");
+		gtk_box_append(GTK_BOX(hbox), label);
+		stat_iv_spin_button = gtk_spin_button_new_with_range(0, 15, 1);
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(stat_iv_spin_button), stat_iv);
+		gtk_box_append(GTK_BOX(hbox), stat_iv_spin_button);
+
 		*stat_iv_spin = stat_iv_spin_button;
+	}
 
 	if(stat_xp_spin)
-		*stat_xp_spin = stat_xp_spin_button;
+	{
+		label = gtk_label_new("XP");
+		gtk_box_append(GTK_BOX(hbox), label);
+		stat_xp_spin_button = gtk_spin_button_new_with_range(0, 65535, 1);
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(stat_xp_spin_button), stat_xp);
+		gtk_box_append(GTK_BOX(hbox), stat_xp_spin_button);
 
-	gtk_box_append(GTK_BOX(tab_vbox), hbox);
+		*stat_xp_spin = stat_xp_spin_button;
+	}
+
+	gtk_box_append(GTK_BOX(vbox), hbox);
+	gtk_center_box_set_center_widget(GTK_CENTER_BOX(center_box), vbox);
+	gtk_box_append(GTK_BOX(tab_vbox), center_box);
 
 	return hbox;
 }
@@ -217,20 +225,25 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 	GtkWidget *notebook;
 	GtkWidget *species_dropdown;
 	GtkWidget *save_button, *cancel_button;
+	GtkWidget *temp_vbox;
 	UpdatePokemonParams *update_pokemon_params = malloc(sizeof(UpdatePokemonParams));
 
 	Info pokemon_info = get_pokemon_info(pokemon->id);
 	main_window = gtk_widget_get_ancestor(GTK_WIDGET(button), GTK_TYPE_WINDOW);
 	edit_window = gtk_window_new();
+	gtk_window_set_default_size(GTK_WINDOW(edit_window), 600, 400);
 	gtk_window_set_title(GTK_WINDOW(edit_window), "Edit Pokemon");
 	gtk_window_set_modal(GTK_WINDOW(edit_window), TRUE);
 	gtk_window_set_transient_for(GTK_WINDOW(edit_window), GTK_WINDOW(main_window));
 
-	edits_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	edits_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
 
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-	gtk_window_set_child(GTK_WINDOW(edit_window), hbox);
 	gtk_box_append(GTK_BOX(hbox), edits_vbox);
+	gtk_widget_set_margin_top(hbox, 16);
+	gtk_widget_set_margin_start(hbox, 16);
+	gtk_widget_set_margin_bottom(hbox, 16);
+	gtk_window_set_child(GTK_WINDOW(edit_window), hbox);
 
 	gchar *full_path = g_build_filename("..", "assets", "pokemon", pokemon_info.filename, NULL);
 	GFile *file = g_file_new_for_path(full_path);
@@ -238,13 +251,17 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 	gtk_picture_set_content_fit(GTK_PICTURE(pokemon_image), GTK_CONTENT_FIT_CONTAIN);
 	gtk_widget_set_size_request(pokemon_image, 68, 56);
 	gtk_box_append(GTK_BOX(edits_vbox), pokemon_image);
+	g_object_unref(file);
 	g_free(full_path);
 
+	temp_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	name_entry = gtk_entry_new();
+	gtk_entry_set_max_length(GTK_ENTRY(name_entry), 10);
 	gtk_editable_set_text(GTK_EDITABLE(name_entry), pokemon->nickname);
 	label = gtk_label_new("Name");
-	gtk_box_append(GTK_BOX(edits_vbox), label);
-	gtk_box_append(GTK_BOX(edits_vbox), name_entry);
+	gtk_box_append(GTK_BOX(temp_vbox), label);
+	gtk_box_append(GTK_BOX(temp_vbox), name_entry);
+	gtk_box_append(GTK_BOX(edits_vbox), temp_vbox);
 
 	GtkStringList *pokemon_strings = gtk_string_list_new(NULL);
 
@@ -260,37 +277,45 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 		}
 	}
 
+	temp_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	species_dropdown = gtk_drop_down_new(G_LIST_MODEL(pokemon_strings), NULL);
 	gtk_drop_down_set_selected(GTK_DROP_DOWN(species_dropdown), --pokemon_id);
 	gtk_drop_down_set_enable_search(GTK_DROP_DOWN(species_dropdown), TRUE);
 	label = gtk_label_new("Species");
-	gtk_box_append(GTK_BOX(edits_vbox), label);
-	gtk_box_append(GTK_BOX(edits_vbox), species_dropdown);
+	gtk_box_append(GTK_BOX(temp_vbox), label);
+	gtk_box_append(GTK_BOX(temp_vbox), species_dropdown);
+	gtk_box_append(GTK_BOX(edits_vbox), temp_vbox);
 
+	temp_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	level_spin_button = gtk_spin_button_new_with_range(1, 100, 1);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(level_spin_button), pokemon->level);
 	label = gtk_label_new("Level");
-	gtk_box_append(GTK_BOX(edits_vbox), label);
-	gtk_box_append(GTK_BOX(edits_vbox), level_spin_button);
+	gtk_box_append(GTK_BOX(temp_vbox), label);
+	gtk_box_append(GTK_BOX(temp_vbox), level_spin_button);
+	gtk_box_append(GTK_BOX(edits_vbox), temp_vbox);
 
 	char buffer[10];
 	snprintf(buffer, sizeof(buffer), "%d", pokemon->og_trainer_id);
+	temp_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	og_trainer_id_entry = gtk_entry_new();
 	gtk_editable_set_text(GTK_EDITABLE(og_trainer_id_entry), buffer);
 	label = gtk_label_new("OG Trainer ID");
-	gtk_box_append(GTK_BOX(edits_vbox), label);
-	gtk_box_append(GTK_BOX(edits_vbox), og_trainer_id_entry);
+	gtk_box_append(GTK_BOX(temp_vbox), label);
+	gtk_box_append(GTK_BOX(temp_vbox), og_trainer_id_entry);
+	gtk_box_append(GTK_BOX(edits_vbox), temp_vbox);
 
+	temp_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	og_trainer_name_entry = gtk_entry_new();
+	gtk_entry_set_max_length(GTK_ENTRY(og_trainer_name_entry), 7);
 	gtk_editable_set_text(GTK_EDITABLE(og_trainer_name_entry), pokemon->og_trainer_name);
 	label = gtk_label_new("OG Trainer Name");
-	gtk_box_append(GTK_BOX(edits_vbox), label);
-	gtk_box_append(GTK_BOX(edits_vbox), og_trainer_name_entry);
+	gtk_box_append(GTK_BOX(temp_vbox), label);
+	gtk_box_append(GTK_BOX(temp_vbox), og_trainer_name_entry);
+	gtk_box_append(GTK_BOX(edits_vbox), temp_vbox);
 
 	notebook = gtk_notebook_new();
 	gtk_widget_set_hexpand(notebook, TRUE);
 	gtk_widget_set_vexpand(notebook, TRUE);
-	gtk_widget_set_margin_bottom(notebook, 16);
 	gtk_widget_set_margin_start(notebook, 16);
 	gtk_widget_set_margin_end(notebook, 16);
 	gtk_box_append(GTK_BOX(hbox), notebook);
@@ -299,25 +324,25 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 	GtkWidget *stats_tab_scrolled = gtk_scrolled_window_new();
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), stats_tab_scrolled, stats_tab_label);
 
-	GtkWidget *stat_tab_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	GtkWidget *stat_tab_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 16);
 	gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(stats_tab_scrolled), stat_tab_vbox);
 
-	create_stat_edit_hbox(stat_tab_vbox, "HP", pokemon->hp,
+	create_stat_edit_box(stat_tab_vbox, "HP", pokemon->hp,
 			pokemon->hp_iv, pokemon->hp_xp, NULL, &update_pokemon_params->hp_stat_xp);
 
-	create_stat_edit_hbox(stat_tab_vbox, "Attack", pokemon->attack, pokemon->attack_iv,
+	create_stat_edit_box(stat_tab_vbox, "Attack", pokemon->attack, pokemon->attack_iv,
 			pokemon->attack_xp, &update_pokemon_params->attack_stat_iv,
 			&update_pokemon_params->attack_stat_xp);
 
-	create_stat_edit_hbox(stat_tab_vbox, "Defense",
+	create_stat_edit_box(stat_tab_vbox, "Defense",
 			pokemon->defense, pokemon->defense_iv, pokemon->defense_xp,
 			&update_pokemon_params->defense_stat_iv, &update_pokemon_params->defense_stat_xp);
 
-	create_stat_edit_hbox(stat_tab_vbox, "Speed",
+	create_stat_edit_box(stat_tab_vbox, "Speed",
 			pokemon->speed, pokemon->speed_iv, pokemon->speed_xp,
 			&update_pokemon_params->speed_stat_iv, &update_pokemon_params->speed_stat_xp);
 
-	create_stat_edit_hbox(stat_tab_vbox, "Special",
+	create_stat_edit_box(stat_tab_vbox, "Special",
 			pokemon->special, pokemon->special_iv, pokemon->special_xp,
 			&update_pokemon_params->special_stat_iv, &update_pokemon_params->special_stat_xp);
 
@@ -337,6 +362,7 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 
 	GtkWidget *move_dropdown;
 
+	label = gtk_label_new("Move 1");
 	move_dropdown = gtk_drop_down_new(G_LIST_MODEL(move_strings), NULL);
 	gtk_drop_down_set_selected(GTK_DROP_DOWN(move_dropdown), pokemon->move1_id);
  	gtk_drop_down_set_enable_search(GTK_DROP_DOWN(move_dropdown), TRUE);
@@ -352,7 +378,7 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 
 	g_object_ref(move_strings);
 	move_dropdown = gtk_drop_down_new(G_LIST_MODEL(move_strings), NULL);
-		gtk_drop_down_set_selected(GTK_DROP_DOWN(move_dropdown), pokemon->move3_id);
+	gtk_drop_down_set_selected(GTK_DROP_DOWN(move_dropdown), pokemon->move3_id);
  	gtk_drop_down_set_enable_search(GTK_DROP_DOWN(move_dropdown), TRUE);
 	gtk_box_append(GTK_BOX(moves_tab_vbox), move_dropdown);
 	update_pokemon_params->move3_dropdown = move_dropdown;
@@ -361,10 +387,21 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 	move_dropdown = gtk_drop_down_new(G_LIST_MODEL(move_strings), NULL);
 	gtk_drop_down_set_selected(GTK_DROP_DOWN(move_dropdown), pokemon->move4_id);
  	gtk_drop_down_set_enable_search(GTK_DROP_DOWN(move_dropdown), TRUE);
+	gtk_box_append(GTK_BOX(moves_tab_vbox), move_dropdown);
 	update_pokemon_params->move4_dropdown = move_dropdown;
 
-	exit_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);	
+	exit_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);	
 	gtk_box_append(GTK_BOX(edits_vbox), exit_hbox);
+	gtk_widget_set_halign(exit_hbox, GTK_ALIGN_CENTER);
+
+	save_button = gtk_button_new_with_label("Apply");
+	g_signal_connect(save_button, "clicked", G_CALLBACK(update_pokemon), update_pokemon_params);
+	gtk_box_append(GTK_BOX(exit_hbox), save_button);
+
+	cancel_button = gtk_button_new_with_label("Cancel");
+	gtk_box_append(GTK_BOX(exit_hbox), cancel_button);
+	g_signal_connect_swapped(cancel_button, "clicked", G_CALLBACK(gtk_window_destroy),
+			edit_window);
 
 	update_pokemon_params->pokemon = pokemon;
 	update_pokemon_params->name_entry = name_entry;
@@ -373,84 +410,93 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 	update_pokemon_params->og_trainer_name_entry = og_trainer_name_entry;
 	update_pokemon_params->species_dropdown = species_dropdown;
 
-	save_button = gtk_button_new_with_label("Apply Changes");
-	g_signal_connect(save_button, "clicked", G_CALLBACK(update_pokemon), update_pokemon_params);
-	gtk_box_append(GTK_BOX(exit_hbox), save_button);
-
-	cancel_button = gtk_button_new_with_label("Cancel");
-	gtk_box_append(GTK_BOX(exit_hbox), cancel_button);
-	g_signal_connect_swapped(cancel_button, "clicked", G_CALLBACK(gtk_window_destroy),
-			edit_window);
-gtk_box_append(GTK_BOX(moves_tab_vbox), move_dropdown);
-
 	gtk_window_present(GTK_WINDOW(edit_window));
 }
 
 static void create_pokemon_tab_entry(GtkWidget *tab_vbox, Pokemon *pokemon_group, int index,
 	Pokemon *pokemon)
 {
-	GtkWidget *entry_hbox;
+	GtkWidget *entry_center_box;
+	GtkWidget *center_box_left_hbox, *center_box_right_hbox;
 	GtkWidget *pokemon_image, *name_label;
 	GtkWidget *edit_button;
 
 	Info pokemon_info = get_pokemon_info(pokemon->id);
 
-	entry_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-	gtk_widget_set_hexpand(entry_hbox, TRUE);
+	entry_center_box = gtk_center_box_new();
+	gtk_widget_set_hexpand(entry_center_box, TRUE);
+
+	center_box_left_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+	center_box_right_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+	g_object_set(center_box_right_hbox, "margin-end", 8, NULL);
+
+	gtk_center_box_set_start_widget(GTK_CENTER_BOX(entry_center_box), center_box_left_hbox);
+	gtk_center_box_set_end_widget(GTK_CENTER_BOX(entry_center_box), center_box_right_hbox);
 
 	gchar *full_path = g_build_filename("..", "assets", "pokemon", pokemon_info.filename, NULL);
 	GFile *file = g_file_new_for_path(full_path);
 	pokemon_image = gtk_picture_new_for_file(file);
 	gtk_picture_set_content_fit(GTK_PICTURE(pokemon_image), GTK_CONTENT_FIT_CONTAIN);
 	gtk_widget_set_size_request(pokemon_image, 68, 56);
-	gtk_box_append(GTK_BOX(entry_hbox), pokemon_image);
+	gtk_box_append(GTK_BOX(center_box_left_hbox), pokemon_image);
+	g_object_unref(file);
 	g_free(full_path);
 
 	name_label = gtk_label_new(pokemon->nickname);
-	gtk_box_append(GTK_BOX(entry_hbox), name_label);
+	gtk_box_append(GTK_BOX(center_box_left_hbox), name_label);
 
 	edit_button = gtk_button_new_from_icon_name("document-edit-symbolic");
-
+	gtk_widget_set_valign(edit_button, GTK_ALIGN_CENTER);
 	g_signal_connect(G_OBJECT(edit_button), "clicked", G_CALLBACK(display_pokemon_edit_window),
 			pokemon);
-	gtk_box_append(GTK_BOX(entry_hbox), edit_button);
+	gtk_box_append(GTK_BOX(center_box_right_hbox), edit_button);
 
-	gtk_box_append(GTK_BOX(tab_vbox), entry_hbox);
+	gtk_box_append(GTK_BOX(tab_vbox), entry_center_box);
 }
 
 static void create_item_tab_entry(GtkWidget *tab_vbox, List *item_list, int index,
 		int id, int count)
 {
-	GtkWidget *entry_hbox;
+	GtkWidget *entry_center_box;
+	GtkWidget *center_box_left_hbox, *center_box_right_hbox;
 	GtkWidget *item_image, *name_label;
 	GtkWidget *count_spin_button, *remove_button;
 
 	Info item = get_item_info(id);
 
-	entry_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-	gtk_widget_set_hexpand(entry_hbox, TRUE);
+	entry_center_box = gtk_center_box_new();
+	gtk_widget_set_hexpand(entry_center_box, TRUE);
+
+	center_box_left_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+	center_box_right_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+	g_object_set(center_box_right_hbox, "margin-end", 8, NULL);
+
+	gtk_center_box_set_start_widget(GTK_CENTER_BOX(entry_center_box), center_box_left_hbox);
+	gtk_center_box_set_end_widget(GTK_CENTER_BOX(entry_center_box), center_box_right_hbox);
 
 	gchar *full_path = g_build_filename("..", "assets", "item", item.filename, NULL);
 	item_image = gtk_image_new_from_file(full_path);
 	gtk_image_set_pixel_size(GTK_IMAGE(item_image), 64);
-	gtk_box_append(GTK_BOX(entry_hbox), item_image);
+	gtk_box_append(GTK_BOX(center_box_left_hbox), item_image);
 	g_free(full_path);
 
 	name_label = gtk_label_new(item.name);
-	gtk_box_append(GTK_BOX(entry_hbox), name_label);
+	gtk_box_append(GTK_BOX(center_box_left_hbox), name_label);
 
 	count_spin_button = gtk_spin_button_new_with_range(1, 99, 1);
 	gtk_spin_button_set_value(GTK_SPIN_BUTTON(count_spin_button), count);
 	g_signal_connect(count_spin_button, "value-changed", G_CALLBACK(edit_item_count), item_list);
 	g_object_set_data(G_OBJECT(count_spin_button), "item-index", GINT_TO_POINTER(index));
-	gtk_box_append(GTK_BOX(entry_hbox), count_spin_button);
-	g_object_set_data(G_OBJECT(entry_hbox), "spin-button", count_spin_button);
+	gtk_box_append(GTK_BOX(center_box_right_hbox), count_spin_button);
+	g_object_set_data(G_OBJECT(entry_center_box), "spin-button", count_spin_button);
+	gtk_widget_set_valign(count_spin_button, GTK_ALIGN_CENTER);
 
 	remove_button = gtk_button_new_from_icon_name("window-close-symbolic");
 	g_signal_connect(remove_button, "clicked", G_CALLBACK(delete_item), item_list);
-	gtk_box_append(GTK_BOX(entry_hbox), remove_button);
+	gtk_box_append(GTK_BOX(center_box_right_hbox), remove_button);
+	gtk_widget_set_valign(remove_button, GTK_ALIGN_CENTER);
 
-	gtk_box_append(GTK_BOX(tab_vbox), entry_hbox);
+	gtk_box_append(GTK_BOX(tab_vbox), entry_center_box);
 }
 
 static void update_item_tab(GtkWidget *tab_scrolled, List *item_list)
@@ -467,8 +513,10 @@ static void update_item_tab(GtkWidget *tab_scrolled, List *item_list)
 	if(item_list->count < 20)
 	{
 		GtkWidget *new_item_button;
-		new_item_button = gtk_button_new_from_icon_name("list-add-symbolic");
+		new_item_button = gtk_button_new();
+		gtk_button_set_label(GTK_BUTTON(new_item_button), "Add New Item");
 		g_signal_connect(new_item_button, "clicked", G_CALLBACK(prompt_new_item), item_list);
+		gtk_widget_set_halign(new_item_button, GTK_ALIGN_CENTER);
 		gtk_box_append(GTK_BOX(tab_vbox), new_item_button);
 	}
 }
@@ -597,6 +645,8 @@ static void load_file(GObject *file_dialog, GAsyncResult *result, gpointer windo
 	update_item_tab(global_widgets.item_box_tab_scrolled, &save.save_data.box_items);
 	update_party_tab();
 	update_pokemon_box_tab();
+
+	gtk_window_set_child(GTK_WINDOW(window), global_widgets.main_vbox);
 }
 
 static void open_file(GtkWindow *window)
@@ -624,7 +674,7 @@ static void app_activate(GApplication *app)
 	global_widgets.main_window = window;
 
 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 16);
-	gtk_window_set_child(GTK_WINDOW(window), vbox);
+	global_widgets.main_vbox = vbox;
 
 	toolbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 1);
 	gtk_widget_add_css_class(toolbar, "toolbar");
@@ -648,17 +698,17 @@ static void app_activate(GApplication *app)
 	gtk_box_append(GTK_BOX(hbox), save_edits_vbox);
 
 	global_widgets.player_name_entry = create_save_edit_entry(save_edits_vbox, "Player Name");
-	gtk_entry_set_max_length(GTK_ENTRY(global_widgets.player_name_entry), 10);
+	gtk_entry_set_max_length(GTK_ENTRY(global_widgets.player_name_entry), 7);
 
 	global_widgets.rival_name_entry = create_save_edit_entry(save_edits_vbox, "Rival Name");
-	gtk_entry_set_max_length(GTK_ENTRY(global_widgets.rival_name_entry), 10);
+	gtk_entry_set_max_length(GTK_ENTRY(global_widgets.rival_name_entry), 7);
 
 	// money edit needs to be spin button
 	GtkWidget *money_vbox, *money_label;
 	
 	money_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 	money_label = gtk_label_new("Money");
-	global_widgets.money_entry  = gtk_spin_button_new_with_range(1, 999999, 10);
+	global_widgets.money_entry  = gtk_spin_button_new_with_range(0, 999999, 10);
 	gtk_box_append(GTK_BOX(money_vbox), money_label);
 	gtk_box_append(GTK_BOX(money_vbox), global_widgets.money_entry);
 	gtk_box_append(GTK_BOX(save_edits_vbox), money_vbox);
@@ -690,6 +740,13 @@ static void app_activate(GApplication *app)
 	global_widgets.pokemon_box_tab_scrolled = gtk_scrolled_window_new();
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), global_widgets.pokemon_box_tab_scrolled,
 			pokemon_box_tab_label);
+
+	GtkWidget *first_vbox = gtk_center_box_new();
+	GtkWidget *open_file_button = gtk_button_new_with_label("Open File");
+	gtk_widget_set_valign(open_file_button, GTK_ALIGN_CENTER);
+	gtk_center_box_set_center_widget(GTK_CENTER_BOX(first_vbox), open_file_button);
+	g_signal_connect_swapped(open_file_button, "clicked", G_CALLBACK(open_file), window);
+	gtk_window_set_child(GTK_WINDOW(window), first_vbox);
 
 	gtk_window_present(GTK_WINDOW(window));
 }
