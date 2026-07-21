@@ -3,7 +3,7 @@
 
 typedef struct
 {
-	GtkWidget *main_window,
+	GtkWidget *main_window, *main_vbox,
 			  *player_name_entry, *rival_name_entry, *money_entry,
 	          *bag_tab_scrolled, *item_box_tab_scrolled,
 			  *party_tab_scrolled, *pokemon_box_tab_scrolled;
