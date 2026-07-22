@@ -245,13 +245,11 @@ static void display_pokemon_edit_window(GtkButton *button, Pokemon *pokemon)
 	gtk_widget_set_margin_bottom(hbox, 16);
 	gtk_window_set_child(GTK_WINDOW(edit_window), hbox);
 
-	gchar *full_path = g_build_filename("..", "assets", "pokemon", pokemon_info.filename, NULL);
-	GFile *file = g_file_new_for_path(full_path);
-	pokemon_image = gtk_picture_new_for_file(file);
+	gchar *full_path = g_build_filename("/", "rbyedit", "assets", "pokemon", pokemon_info.filename, NULL);
+	pokemon_image = gtk_picture_new_for_resource(full_path);
 	gtk_picture_set_content_fit(GTK_PICTURE(pokemon_image), GTK_CONTENT_FIT_CONTAIN);
 	gtk_widget_set_size_request(pokemon_image, 68, 56);
 	gtk_box_append(GTK_BOX(edits_vbox), pokemon_image);
-	g_object_unref(file);
 	g_free(full_path);
 
 	temp_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -433,13 +431,11 @@ static void create_pokemon_tab_entry(GtkWidget *tab_vbox, Pokemon *pokemon_group
 	gtk_center_box_set_start_widget(GTK_CENTER_BOX(entry_center_box), center_box_left_hbox);
 	gtk_center_box_set_end_widget(GTK_CENTER_BOX(entry_center_box), center_box_right_hbox);
 
-	gchar *full_path = g_build_filename("..", "assets", "pokemon", pokemon_info.filename, NULL);
-	GFile *file = g_file_new_for_path(full_path);
-	pokemon_image = gtk_picture_new_for_file(file);
+	gchar *full_path = g_build_filename("/", "rbyedit", "assets", "pokemon", pokemon_info.filename, NULL);
+	pokemon_image = gtk_picture_new_for_resource(full_path);
 	gtk_picture_set_content_fit(GTK_PICTURE(pokemon_image), GTK_CONTENT_FIT_CONTAIN);
 	gtk_widget_set_size_request(pokemon_image, 68, 56);
 	gtk_box_append(GTK_BOX(center_box_left_hbox), pokemon_image);
-	g_object_unref(file);
 	g_free(full_path);
 
 	name_label = gtk_label_new(pokemon->nickname);
@@ -474,9 +470,10 @@ static void create_item_tab_entry(GtkWidget *tab_vbox, List *item_list, int inde
 	gtk_center_box_set_start_widget(GTK_CENTER_BOX(entry_center_box), center_box_left_hbox);
 	gtk_center_box_set_end_widget(GTK_CENTER_BOX(entry_center_box), center_box_right_hbox);
 
-	gchar *full_path = g_build_filename("..", "assets", "item", item.filename, NULL);
-	item_image = gtk_image_new_from_file(full_path);
-	gtk_image_set_pixel_size(GTK_IMAGE(item_image), 64);
+	gchar *full_path = g_build_filename("/", "rbyedit", "assets" ,"item", item.filename, NULL);
+	item_image = gtk_picture_new_for_resource(full_path);
+	gtk_picture_set_content_fit(GTK_PICTURE(item_image), GTK_CONTENT_FIT_CONTAIN);
+	gtk_widget_set_size_request(item_image, 32, 32);
 	gtk_box_append(GTK_BOX(center_box_left_hbox), item_image);
 	g_free(full_path);
 
