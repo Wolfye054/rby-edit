@@ -1,4 +1,5 @@
 # rbyedit
+<img width="256" height="256" alt="rbyedit_logo" src="https://github.com/user-attachments/assets/4635de08-766f-42b1-94a0-7e5e0ea5b64c" />
 
 Save editor for the Generation I Pokémon Game Boy games.
 
