@@ -40,4 +40,5 @@ gcc ../source/gtk_rbyedit.c \
 	resources.c \
 	$CFLAGS $GTK_FLAGS \
 	-o rbyedit
+cp rbyedit debug
 popd >> /dev/null

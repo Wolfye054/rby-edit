@@ -668,6 +668,7 @@ static void app_activate(GApplication *app)
 	window = gtk_application_window_new(GTK_APPLICATION(app));
 	gtk_window_set_title(GTK_WINDOW(window), "rby edit");
 	gtk_window_set_default_size(GTK_WINDOW(window), 600, 400);
+	gtk_window_set_icon_name(GTK_WINDOW(window), "firefox");
 	global_widgets.main_window = window;
 
 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 16);
